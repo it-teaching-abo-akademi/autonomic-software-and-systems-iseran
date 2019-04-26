@@ -38,10 +38,10 @@ def get_start_point(world, coord):
     td = get_dist(points[0],coord) 
     for point in points:
         ti += 1
-	d = get_dist(point, coord)
+        d = get_dist(point, coord)
         if d < td:
-	    td = d
-	    index = ti
+            td = d
+        index = ti
     start_point = points[index]
     return world.get_map().get_waypoint(start_point.location)
 
@@ -67,7 +67,7 @@ def main():
         blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
         blueprints = [x for x in blueprints if not x.id.endswith('isetta')]
 
-	def try_spawn_random_vehicle_at(transform, recursion=0):
+        def try_spawn_random_vehicle_at(transform, recursion=0):
             blueprint = random.choice(blueprints)
             if blueprint.has_attribute('color'):
                 color = random.choice(blueprint.get_attribute('color').recommended_values)
@@ -78,14 +78,14 @@ def main():
                 actor_list.append(vehicle)
                 print('spawned %r at %s' % (vehicle.type_id, transform.location))
             else:
-		if recursion > 20:
+                if recursion > 20:
                     print('WARNING: vehicle not spawned, NONE returned')
                 else:
                     return try_spawn_random_vehicle_at(transform, recursion+1)
             return vehicle
 
 	# Defining positions
-	ex1 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(22,-4,1.8431), carla.Vector3D(9,-22,1.8431)]
+        ex1 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(22,-4,1.8431), carla.Vector3D(9,-22,1.8431)]
         ex2 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(-30,167,1.8431)]
         ex3 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(22,-4,1.8431), carla.Vector3D(9,-22,1.8431)]
         #ex4 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(134,-3,1.8431)]
@@ -95,28 +95,28 @@ def main():
         
         milestones = [ex1, ex2, ex3]
         ms = max(0,min(args.milestone_number-1,len(milestones)-1))
-	ex = milestones[ms]
+        ex = milestones[ms]
         end = ex[len(ex)-1]
         destination = ex[1]
 
 	# Getting waypoint to spawn
-	start = get_start_point(world, ex[0])
+        start = get_start_point(world, ex[0])
         # Spawning
         vehicle = try_spawn_random_vehicle_at(start.transform)
-	if vehicle == None:
+        if vehicle == None:
             return
 	# Setting autopilot
-	def route_finished(autopilot):
+        def route_finished(autopilot):
             pos = autopilot.get_vehicle().get_transform().location
-            print "Vehicle arrived at destination: ", pos
+            print ("Vehicle arrived at destination: ", pos)
             if pos.distance(carla.Location(end)) < 5.0:
-                print "Excercise route finished"
+                print ("Excercise route finished")
                 running = False
             else:
                 autopilot.set_destination(end)
 
         autopilot = ai.Autopilot(vehicle)
-	autopilot.set_destination(destination)
+        autopilot.set_destination(destination)
         autopilot.set_route_finished_callback(route_finished)
 
         if ms == 2:
@@ -128,9 +128,9 @@ def main():
             def _on_collision(self, event):
                 if not self:
                     return
-                print 'Collision with: ', event.other_actor.type_id
+                print ('Collision with: ', event.other_actor.type_id)
                 if event.other_actor.type_id.split('.')[0] == 'vehicle':
-                    print "Test FAILED"
+                    print ("Test FAILED")
                 kamikaze.destroy()
                 sensor.destroy()
        
@@ -145,7 +145,7 @@ def main():
 
         ctr = 0
         running = True
-	while running:
+        while running:
             status = autopilot.update()
             if status == ai.data.Status.ARRIVED:
                 ctr += 1
