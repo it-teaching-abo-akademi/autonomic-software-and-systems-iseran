@@ -41,8 +41,9 @@ def get_start_point(world, coord):
         d = get_dist(point, coord)
         if d < td:
             td = d
-        index = ti
+            index = ti
     start_point = points[index]
+    print(start_point.location)
     return world.get_map().get_waypoint(start_point.location)
 
 
@@ -101,10 +102,12 @@ def main():
 
 	# Getting waypoint to spawn
         start = get_start_point(world, ex[0])
+        
         # Spawning
         vehicle = try_spawn_random_vehicle_at(start.transform)
         if vehicle == None:
             return
+    
 	# Setting autopilot
         def route_finished(autopilot):
             pos = autopilot.get_vehicle().get_transform().location

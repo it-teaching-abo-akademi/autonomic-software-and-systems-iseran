@@ -6,6 +6,8 @@ import sys
 from collections import deque
 import math
 import numpy as np
+from enum import Enum
+import random
 
 try:
     sys.path.append(glob.glob('**/*%d.%d-%s.egg' % (
@@ -27,6 +29,9 @@ class Executor(object):
     self.vehicle = vehicle
     self.knowledge = knowledge
     self.target_pos = knowledge.get_location()
+  def unit_vector(self,vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
     
   #Update the executor at some intervals to steer the car in desired direction
   #Updates the location, speed_limit, angle, at every frame. Gets the information from the additional_vars in update_control
@@ -36,32 +41,53 @@ class Executor(object):
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
       dest = self.knowledge.get_current_destination()
-      #print("dest is ", dest)
-      self.update_control(dest, [1], time_elapsed)
+      #debug draw 
+      #
+      vec = self.vehicle.get_transform().get_forward_vector()
+      forwardvec = np.array([vec.x,vec.y])
+      nextvec = np.array([dest.x,dest.y])
+      both = np.array([forwardvec,nextvec])
+      #angle = np.math.atan2(forwardvec,nextvec)
+      #angle = np.math.atan2([vec.x,vec.y,vec.z],[dest.x,dest.y,dest.z])
+      #angle = np.math.atan2(np.linalg.det([forwardvec,nextvec]),np.dot(forwardvec,nextvec))
+      v1 = [vec.x,vec.y]
+      v2 = [dest.x,dest.y]
+      v1_u = self.unit_vector(v1)
+      v2_u = self.unit_vector(v2)
+      angle = np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+      # print(v1)
+      # print(v2)
+      # cosang = np.dot(v1, v2) # dotproduct
+      # sinang = np.linalg.norm(np.cross(v1, v2)) # normalize 
+      # angle = np.arccos(sinang, cosang)
+      print (np.degrees(angle))
+      print (angle)
+      print("Moving")
+      if angle < 180:
+        steer = 0.5
+      else:
+        steer = -0.5
+
+      throttle = 0.5
+      #steer = 0.0
+      brake = 0.0
+
+
+      self.update_control(dest, throttle, steer, brake, time_elapsed)
 
   # TODO: steer in the direction of destination and throttle or brake depending on how close we are to destination
-  # TODO: Take into account that exiting the crash site could also be done in reverse, so there might need to be additional data passed between planner and 
-	#executor, or there needs to be some way to tell this that it is ok to drive in reverse during HEALING and CRASHED states. An example is additional_vars, 
-	#that could be a list with parameters that can tell us which things we can do (for example going in reverse)
-  #*
-  # The goal here is to use additional_vars as a list of different parameters, which control the vehicles speed, angle and location
-  # Since the update function is called every frame, the vehicle be controlled with the help of speed_limit and angle
-  # Determining the appropirate speed and such can be done with the carla python api, for example Waypoint.is_intersection 
-  # (should slow down at intersections or stop completely)
-  # 
-  # We should first implement the make_plan function, because we can't control speed and such before making if we don't know where we are going 
-  # additional_vars can contain variables such as speed_limit, angle, location 
-  # *#
-  #speed_limit, angle, location,
-  def update_control(self, destination, additional_vars, delta_time):
-
+  # TODO: Take into account that exiting the crash site could also be done in reverse, 
+  #so there might need to be additional data passed between planner and executor, or there needs to be some way to tell this that it is ok to drive in reverse during HEALING and CRASHED states. An example is additional_vars, that could be a list with parameters that can tell us which things we can do (for example going in reverse)
+  def update_control(self, destination, throttle, steer, brake, delta_time):
     #calculate throttle and heading
     control = carla.VehicleControl()
-    control.throttle = 0.8
-    control.steer = 0.0
-    control.brake = 0.0
+    control.throttle = throttle
+    control.steer = steer
+    control.brake = brake
     control.hand_brake = False
     self.vehicle.apply_control(control)
+
+
 
 # Planner is responsible for creating a plan for moving around
 # In our case it creates a list of waypoints to follow so that vehicle arrives at destination
@@ -71,6 +97,7 @@ class Planner(object):
   def __init__(self, knowledge, world):
     self.knowledge = knowledge
     self.path = deque([])
+    self._hop_resolution= 2.0
 
   # Create a map of waypoints to follow to the destination and save it
   def make_plan(self, source, destination):
@@ -81,6 +108,8 @@ class Planner(object):
   # Function that is called at time intervals to update ai-state
   def update(self, time_elapsed):
     self.update_plan()
+    print("Planner update dest ")
+    print(self.get_current_destination())
     self.knowledge.update_destination(self.get_current_destination())
   
   #Update internal state to make sure that there are waypoints to follow and that we have not arrived yet
@@ -102,6 +131,8 @@ class Planner(object):
     #if we are driving, then the current destination is next waypoint
     if status == Status.DRIVING:
       #TODO: Take into account traffic lights and other cars
+
+      print("whhahaaat")
       return self.path[0]
     if status == Status.ARRIVED:
       return self.knowledge.get_location()
@@ -125,35 +156,53 @@ class Planner(object):
   # 4. ???
   # 5. Profit??
   # *#
-  
+
   #TODO: Implementation
   def build_path(self, source, destination):
     self.path = deque([])
-    self.path.append(destination)
-    client = carla.Client('localhost', 2000)
-    world = client.get_world()
+    #TODO: create path of waypoints from source 
+   
+    world = self.knowledge.get_world()   
     map = world.get_map()
-    actor_list = world.get_actors()
-    #spawn_points = world.get_map().get_spawn_points()
-    #actor = actor_list.find(id)
-    
-    for vehicle in actor_list.filter('vehicle.*'):
-      print ("Vehicle is at : ", vehicle.get_location())
-      vehLocation = vehicle.get_location()
+    start_waypoint = map.get_waypoint(source.location)
+    destLoc = carla.Location(destination.x,destination.y,destination.z)
+    end_waypoint = map.get_waypoint(destLoc)
+  
+    current_waypoint = start_waypoint
+    while True :
+      w_next = list(current_waypoint.next(5))
+      if len(w_next) > 1: 
+        min_idx = 0 
+        min_dist = None
+        for idx, next in enumerate(w_next):
+          w_next_next = list(next.next(10))
+          # lanechange, both right    left  
+          # both right = waypoit.get_right_lane()
+          # both left = waypoit.get_left_lane()
+          #min_dist = w_next_next[0].transform.location.distance(destLoc)
+          for next_next in w_next_next:
+            dist = next_next.transform.location.distance(destLoc)
+            if min_dist == None:
+              min_dist = dist
+              min_idx = idx
+            elif dist <= min_dist:
+              min_dist = dist
+              min_idx = idx
 
-    waypoint = map.get_waypoint(vehicle.get_location())
-    print ("waypoint is ", waypoint)
-    for x in range(10):
-      next = list(waypoint.next(5.0))
-      print ("waypoints close by are ", next)
-      #vehicle.set_transform(waypoint.transform)
-      
-    #waypoint = map.get_waypoint(vehicle.get_location())
-    #source = carla.Map('name')
-    #print ("source is ", source)
-    #print ("destination is ", destination)
-    #print ("waypoint ", waypoint)
-    #print ("actor_list is ", actor_list)
-    #TODO: create path of waypoints from source to destination
-    #print ("location is ",source.location)
+        current_waypoint = w_next[min_idx]
+      else:
+        current_waypoint = w_next[0]
+    #  or Random
+    #  current_waypoint = random.choice(w_next)
+      if current_waypoint.transform.location.distance(
+                end_waypoint.transform.location) < 5.0: break
+      else:
+        print(current_waypoint)
+        vec =carla.Vector3D(current_waypoint.transform.location.x,current_waypoint.transform.location.y,current_waypoint.transform.location.z)
+        self.path.append(vec)    
+    
+    # vec =carla.Vector3D(current_waypoint.transform.location.x,current_waypoint.transform.location.y,current_waypoint.transform.location.z)
+    # self.path.append(vec)
+    self.path.append(destination)
     return self.path
+
