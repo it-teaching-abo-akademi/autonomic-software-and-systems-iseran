@@ -29,7 +29,9 @@ class Monitor(object):
     self.knowledge.update_data('location', self.vehicle.get_transform().location)
     self.knowledge.update_data('rotation', self.vehicle.get_transform().rotation)
 
+
     world = self.vehicle.get_world()
+    self.knowledge.set_world(world)
     bp = world.get_blueprint_library().find('sensor.other.lane_detector')
     self.lane_detector = world.spawn_actor(bp, carla.Transform(), attach_to=self.vehicle)
     self.lane_detector.listen(lambda event: Monitor._on_invasion(weak_self, event))
@@ -39,6 +41,7 @@ class Monitor(object):
     # Update the position of vehicle into knowledge
     self.knowledge.update_data('location', self.vehicle.get_transform().location)
     self.knowledge.update_data('rotation', self.vehicle.get_transform().rotation)
+
 
   @staticmethod
   def _on_invasion(weak_self, event):
@@ -55,4 +58,5 @@ class Analyser(object):
 
   #Function that is called at time intervals to update ai-state
   def update(self, time_elapsed):
+    #velocity calculation depending on destination and speed
     return
