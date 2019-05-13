@@ -31,12 +31,14 @@ class Executor(object):
     self.target_pos = knowledge.get_location()
     self.steer = 0.0
 
+
   #Update the executor at some intervals to steer the car in desired direction
   def update(self, time_elapsed):
     status = self.knowledge.get_status()
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
       destination = self.knowledge.get_current_destination()
+      speed_limit = self.knowledge.retrieve_data("speed_limit")
       
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
@@ -73,10 +75,15 @@ class Executor(object):
       print ("np.degrees are ", np.degrees(angle))
       print("Angle is ", angle)
 
-
-      throttle = 0.3
+      if speed_limit == 0:
+        throttle = 0.0
+        brake = 1
+      else:
+        throttle = 0.3
+        brake = 0.0
+      
       #steer = 0.0
-      brake = 0.0
+      
 
 
       self.update_control(destination, throttle,  steer, brake, time_elapsed)
@@ -133,8 +140,7 @@ class Planner(object):
     #if we are driving, then the current destination is next waypoint
     if status == Status.DRIVING:
       #TODO: Take into account traffic lights and other cars
-
-      print("whhahaaat")
+      
       return self.path[0]
     if status == Status.ARRIVED:
       return self.knowledge.get_location()
@@ -188,12 +194,8 @@ class Planner(object):
 
 
 
-      ropton = self.getRoadOption(last_waypoint,current_waypoint)
-      print("Lane------------------")
-      print(ropton)
-      #print(current_waypoint.get_left_lane())
-      #print(current_waypoint.get_right_lane())
-      #http://carla.org/2019/03/01/release-0.9.4/
+  
+
       
       lanechange= current_waypoint.lane_change # returns carla.LaneChnage
       print("LaneChange-----------------------")
@@ -212,6 +214,14 @@ class Planner(object):
         print("LaneChangeLeft-----------------------")
         print(current_waypoint.get_left_lane())
         current_waypoint = current_waypoint.get_left_lane()
+      # 
+      # print(current_waypoint.lane_change)
+      # if ropton == RoadOption.LEFT:
+      #   print(current_waypoint.get_left_lane())
+      #   current_waypoint = current_waypoint.get_left_lane()
+      # elif ropton == RoadOption.RIGHT:
+      #   print(current_waypoint.get_right_lane())
+      #   current_waypoint = current_waypoint.get_right_lane()
 
 
     #  or Random
