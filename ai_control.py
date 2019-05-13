@@ -30,10 +30,12 @@ class Executor(object):
     self.knowledge = knowledge
     self.target_pos = knowledge.get_location()
     self.steer = 0.0
+    self.update_speed = 0.5
 
 
   #Update the executor at some intervals to steer the car in desired direction
   def update(self, time_elapsed):
+    self.update_speed = time_elapsed
     status = self.knowledge.get_status()
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
@@ -43,9 +45,9 @@ class Executor(object):
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
 
-      # world.debug.draw_string(carla.Location(dest.x,dest.y,dest.z), 'O', draw_shadow=False,
-      #                                  color=carla.Color(r=255, g=0, b=0), life_time=120.0,
-      #                                  persistent_lines=True)
+      self.vehicle.get_world().debug.draw_string(carla.Location(destination.x,destination.y,destination.z), 'O', draw_shadow=False,
+                                       color=carla.Color(r=255, g=0, b=0), life_time=120.0,
+                                       persistent_lines=True)
    
       forwardvec = np.array([vec.x,vec.y]) #rotation vector, one of the vectors we use for our calculation
       nextvec = np.array([destination.x,destination.y])
@@ -64,9 +66,8 @@ class Executor(object):
       print("sign is ", sign)
 
       cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
-      angle = np.arccos(cosine) * 90/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
-
-      
+      angle = np.arccos(cosine) * 45/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
+     # self.vehicle.get_world().debug.draw_point()
       if sign > 0:
         steer = angle
       elif sign < 0:
@@ -79,7 +80,7 @@ class Executor(object):
         throttle = 0.0
         brake = 1
       else:
-        throttle = 0.3
+        throttle = 0.4
         brake = 0.0
       
       #steer = 0.0
@@ -95,11 +96,10 @@ class Executor(object):
     #calculate throttle and heading
     control = carla.VehicleControl()
     control.throttle = throttle
-    control.steer = min(0.7, max(-0.7, steer))
+    control.steer = min(1, max(-1, steer))
     control.brake = brake
     control.hand_brake = False
     self.vehicle.apply_control(control)
-
 
 # Planner is responsible for creating a plan for moving around
 # In our case it creates a list of waypoints to follow so that vehicle arrives at destination
@@ -156,6 +156,7 @@ class Planner(object):
     return self.knowledge.get_location()
 
 
+
   #TODO: Implementation
   def build_path(self, source, destination):
     self.path = deque([])
@@ -168,12 +169,12 @@ class Planner(object):
   
     current_waypoint = start_waypoint
     while True :
-      w_next = list(current_waypoint.next(5))
+      w_next = list(current_waypoint.next(10))
       if len(w_next) > 1: 
         min_idx = 0 
         min_dist = None
         for idx, next in enumerate(w_next):
-          w_next_next = list(next.next(10))
+          w_next_next = list(next.next(20))
           # lanechange, both right    left  
           # both right = waypoit.get_right_lane()
           #min_dist = w_next_next[0].transform.location.distance(destLoc)
@@ -191,37 +192,43 @@ class Planner(object):
       else:
         last_waypoint = current_waypoint
         current_waypoint = w_next[0]
+        #check 
 
 
 
+    
+      #print(current_waypoint.get_left_lane())
+      #print(current_waypoint.get_right_lane())
   
-
+      #http://carla.org/2019/03/01/release-0.9.4/
       
-      lanechange= current_waypoint.lane_change # returns carla.LaneChnage
-      print("LaneChange-----------------------")
-      print(lanechange)
-     
-      # 0: None
-      # 1: Right
-      # 2: Left
-      # 3: Both
+        lanechange= current_waypoint.lane_change # returns carla.LaneChnage
+        print("LaneChange-----------------------")
+        print(lanechange)
+       
+        # 0: None
+        # 1: Right
+        # 2: Left
+        # 3: Both
 
-      if 1 == lanechange:
-        print("LaneChangeRight-----------------------")
-        print(current_waypoint.get_left_lane())
-        current_waypoint = current_waypoint.get_right_lane()
-      elif 2 == lanechange:
-        print("LaneChangeLeft-----------------------")
-        print(current_waypoint.get_left_lane())
-        current_waypoint = current_waypoint.get_left_lane()
-      # 
-      # print(current_waypoint.lane_change)
-      # if ropton == RoadOption.LEFT:
-      #   print(current_waypoint.get_left_lane())
-      #   current_waypoint = current_waypoint.get_left_lane()
-      # elif ropton == RoadOption.RIGHT:
-      #   print(current_waypoint.get_right_lane())
-      #   current_waypoint = current_waypoint.get_right_lane()
+        if carla.LaneChange.Right == lanechange or carla.LaneChange.Both == lanechange:
+          print("LaneChangeRight-----------------------")
+          print(current_waypoint.lane_change)
+          print(current_waypoint.get_right_lane())
+          right_candidate = current_waypoint.get_right_lane()
+          if right_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
+                end_waypoint.transform.location):
+            current_waypoint = right_candidate
+            
+        elif carla.LaneChange.Left == lanechange or carla.LaneChange.Both == lanechange:
+          print("LaneChangeLeft-----------------------")
+          print(current_waypoint.get_left_lane())
+          left_candidate = current_waypoint.get_left_lane()
+          if left_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
+                end_waypoint.transform.location):
+            current_waypoint = left_candidate
+
+
 
 
     #  or Random

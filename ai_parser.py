@@ -67,10 +67,14 @@ class Analyser(object):
   def update(self, time_elapsed):
     #velocity calculation depending on destination and speed
     ## find out if the car is at a trafic light and light red  
-    # chnage speed to 0 
+    # change speed to 0 
     if self.knowledge.retrieve_data("at_lights"):
       traffic_light = self.knowledge.retrieve_data("traffic_light")
       if traffic_light.state == carla.TrafficLightState.Red:
         self.knowledge.update_data('speed_limit', 0)
+    # distance to target 
+    # speed 4     distance < 4
+    #Targetvelocity ( minmax targetbel-vel-0.5,0,1)
+    # 
 
     return
