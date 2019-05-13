@@ -30,25 +30,21 @@ class Executor(object):
     self.knowledge = knowledge
     self.target_pos = knowledge.get_location()
     self.steer = 0.0
-  def unit_vector(self,vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
-    
+
   #Update the executor at some intervals to steer the car in desired direction
   def update(self, time_elapsed):
     status = self.knowledge.get_status()
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
       destination = self.knowledge.get_current_destination()
-      world = self.knowledge.get_world()
+      
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
 
       # world.debug.draw_string(carla.Location(dest.x,dest.y,dest.z), 'O', draw_shadow=False,
       #                                  color=carla.Color(r=255, g=0, b=0), life_time=120.0,
       #                                  persistent_lines=True)
-      #debug draw 
-      #locationvec = np.array([veh.x, veh.y])
+   
       forwardvec = np.array([vec.x,vec.y]) #rotation vector, one of the vectors we use for our calculation
       nextvec = np.array([destination.x,destination.y])
 
@@ -57,25 +53,17 @@ class Executor(object):
       
       print("Forward VEC ", forwardvec)
       print("Destination vector ", nextvec)
-        #angle = np.math.atan2(forwardvec,nextvec)
-        #angle = np.math.atan2([vec.x,vec.y,vec.z],[dest.x,dest.y,dest.z])
-        #angle = np.math.atan2(np.linalg.det([forwardvec,nextvec]),np.dot(forwardvec,nextvec))
+
 
       print ("V1 ", v1)
       print ("V_ap ", v0)
 
       sign = (-v0[0] * vec.y + v0[1] * vec.x) #Calculate the cross product, in order to know which side the vector the angle is
-
-      #cross = np.sign((forwardvec[0] - locationvec[0]) * (nextvec[1] - locationvec[1]) - (forwardvec[1] - locationvec[1]) * (nextvec[0] - locationvec[0]))
-      #sign = ((nextvec[0] - locationvec[0]) * (forwardvec[1] - locationvec[1]) - (nextvec[1] - locationvec[1]) * (forwardvec[0] - locationvec[0]))
-      #sign = 1
       print("sign is ", sign)
 
       cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
       angle = np.arccos(cosine) * 90/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
 
-      #angle = np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
-      #angle = np.arccos(np.clip(cosine, -1, 1))
       
       if sign > 0:
         steer = angle
@@ -105,17 +93,6 @@ class Executor(object):
     control.hand_brake = False
     self.vehicle.apply_control(control)
 
-class RoadOption(Enum):
-    """
-    RoadOption represents the possible topological configurations when moving from a segment of lane to other.
-    """
-    VOID = -1
-    LEFT = 1
-    RIGHT = 2
-    STRAIGHT = 3
-    LANEFOLLOW = 4
-    CHANGELANELEFT = 5
-    CHANGELANERIGHT = 6
 
 # Planner is responsible for creating a plan for moving around
 # In our case it creates a list of waypoints to follow so that vehicle arrives at destination
@@ -135,8 +112,6 @@ class Planner(object):
   # Function that is called at time intervals to update ai-state
   def update(self, time_elapsed):
     self.update_plan()
-    print("Planner update dest ")
-    print(self.get_current_destination())
     self.knowledge.update_destination(self.get_current_destination())
   
   #Update internal state to make sure that there are waypoints to follow and that we have not arrived yet
@@ -158,6 +133,7 @@ class Planner(object):
     #if we are driving, then the current destination is next waypoint
     if status == Status.DRIVING:
       #TODO: Take into account traffic lights and other cars
+
       print("whhahaaat")
       return self.path[0]
     if status == Status.ARRIVED:
@@ -173,28 +149,13 @@ class Planner(object):
     #otherwise destination is same as current position
     return self.knowledge.get_location()
 
-  def getRoadOption(self, current_waypoint, next_waypoint):
-    n = next_waypoint.transform.rotation.yaw
-    n = n % 360.0
-
-    c = current_waypoint.transform.rotation.yaw
-    c = c % 360.0
-
-    diff_angle = (n - c) % 180.0
-    if diff_angle < 1.0:
-        return RoadOption.STRAIGHT
-    elif diff_angle > 90.0: # > ?
-        return RoadOption.LEFT
-    else:
-        return RoadOption.RIGHT
 
   #TODO: Implementation
   def build_path(self, source, destination):
     self.path = deque([])
     #TODO: create path of waypoints from source 
    
-    world = self.knowledge.get_world()   
-    map = world.get_map()
+    map = self.knowledge.retrieve_data("map")
     start_waypoint = map.get_waypoint(source.location)
     destLoc = carla.Location(destination.x,destination.y,destination.z)
     end_waypoint = map.get_waypoint(destLoc)
@@ -233,28 +194,24 @@ class Planner(object):
       #print(current_waypoint.get_left_lane())
       #print(current_waypoint.get_right_lane())
       #http://carla.org/2019/03/01/release-0.9.4/
-      lanechange_prev= current_waypoint.lane_change # returns carla.LaneChnage
+      
       lanechange= current_waypoint.lane_change # returns carla.LaneChnage
-      print("LaneChnage-----------------------")
+      print("LaneChange-----------------------")
       print(lanechange)
      
       # 0: None
       # 1: Right
       # 2: Left
       # 3: Both
-      if 1 == lanechange and  3 == lanechange_prev or 1 == lanechange and  1 == lanechange_prev:
-        current_waypoint = current_waypoint.get_right_lane()
-      elif 2 == lanechange and  3 == lanechange_prev or 2 == lanechange and  2 == lanechange_prev:
-        current_waypoint = current_waypoint.get_left_lane()
 
-        # 
-        # # print(current_waypoint.lanechange())
-        # if ropton == RoadOption.LEFT:
-        #   print(current_waypoint.get_left_lane())
-        #   current_waypoint = current_waypoint.get_left_lane()
-        # elif ropton == RoadOption.RIGHT:
-        #   print(current_waypoint.get_right_lane())
-        #   current_waypoint = current_waypoint.get_right_lane()
+      if 1 == lanechange:
+        print("LaneChangeRight-----------------------")
+        print(current_waypoint.get_left_lane())
+        current_waypoint = current_waypoint.get_right_lane()
+      elif 2 == lanechange:
+        print("LaneChangeLeft-----------------------")
+        print(current_waypoint.get_left_lane())
+        current_waypoint = current_waypoint.get_left_lane()
 
 
     #  or Random

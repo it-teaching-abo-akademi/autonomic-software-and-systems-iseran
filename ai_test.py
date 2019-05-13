@@ -85,7 +85,7 @@ def main():
                     return try_spawn_random_vehicle_at(transform, recursion+1)
             return vehicle
 
-	# Defining positions
+    # Defining positions
         ex1 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(22,-4,1.8431), carla.Vector3D(9,-22,1.8431)]
         ex2 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(-30,167,1.8431)]
         ex3 = [ carla.Vector3D(42.5959,-4.3443,1.8431), carla.Vector3D(22,-4,1.8431), carla.Vector3D(9,-22,1.8431)]
@@ -99,8 +99,9 @@ def main():
         ex = milestones[ms]
         end = ex[len(ex)-1]
         destination = ex[1]
+       
 
-	# Getting waypoint to spawn
+    # Getting waypoint to spawn
         start = get_start_point(world, ex[0])
         
         # Spawning
@@ -108,7 +109,7 @@ def main():
         if vehicle == None:
             return
     
-	# Setting autopilot
+    # Setting autopilot
         def route_finished(autopilot):
             pos = autopilot.get_vehicle().get_transform().location
             print ("Vehicle arrived at destination: ", pos)
@@ -158,7 +159,7 @@ def main():
                 ctr = 0
 
             
-	    #print "distance: ", vehicle.get_transform().location.distance(carla.Location(ex1[2]))
+        #print "distance: ", vehicle.get_transform().location.distance(carla.Location(ex1[2]))
             time.sleep(0.5)
 
     finally:
@@ -167,9 +168,10 @@ def main():
         for actor in actor_list:
             actor.destroy()
         print('done.')
-	
+    
         pygame.quit()
 
 
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+
+    main()

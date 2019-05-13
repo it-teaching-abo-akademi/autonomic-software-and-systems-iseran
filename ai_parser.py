@@ -31,7 +31,8 @@ class Monitor(object):
 
 
     world = self.vehicle.get_world()
-    self.knowledge.set_world(world)
+    self.knowledge.update_data('map', world.get_map())
+
     bp = world.get_blueprint_library().find('sensor.other.lane_detector')
     self.lane_detector = world.spawn_actor(bp, carla.Transform(), attach_to=self.vehicle)
     self.lane_detector.listen(lambda event: Monitor._on_invasion(weak_self, event))
