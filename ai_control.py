@@ -37,62 +37,77 @@ class Executor(object):
   def update(self, time_elapsed):
     self.update_speed = time_elapsed
     status = self.knowledge.get_status()
+    steer = 0.0
+    brake = 0.0
+    throttle = self.update_speed
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
       destination = self.knowledge.get_current_destination()
       speed_limit = self.knowledge.retrieve_data("speed_limit")
       
-      vec = self.vehicle.get_transform().get_forward_vector()
-      veh = self.vehicle.get_transform().location
-
-      self.vehicle.get_world().debug.draw_string(carla.Location(destination.x,destination.y,destination.z), 'O', draw_shadow=False,
-                                       color=carla.Color(r=255, g=0, b=0), life_time=120.0,
-                                       persistent_lines=True)
-   
-      forwardvec = np.array([vec.x,vec.y]) #rotation vector, one of the vectors we use for our calculation
-      nextvec = np.array([destination.x,destination.y])
-
-      v0 = [(destination.x - veh.x), (destination.y - veh.y)] #The other vector from which we gain the angle
-      v1 = [vec.x,vec.y] # Rotation vector
-      
-      print("Forward VEC ", forwardvec)
-      print("Destination vector ", nextvec)
-
-
-      print ("V1 ", v1)
-      print ("V_ap ", v0)
-
-      sign = (-v0[0] * vec.y + v0[1] * vec.x) #Calculate the cross product, in order to know which side the vector the angle is
-      print("sign is ", sign)
-
-      cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
-      angle = np.arccos(cosine) * 45/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
-     # self.vehicle.get_world().debug.draw_point()
-      if sign > 0:
-        steer = angle
-      elif sign < 0:
-        steer = (angle * -1) 
-
-      print ("np.degrees are ", np.degrees(angle))
-      print("Angle is ", angle)
-
-      if speed_limit == 0:
-        throttle = 0.0
-        brake = 1
-      else:
-        throttle = 0.4
-        brake = 0.0
-      
-      #steer = 0.0
-      
-
-
       self.update_control(destination, throttle,  steer, brake, time_elapsed)
 
   # TODO: steer in the direction of destination and throttle or brake depending on how close we are to destination
   # TODO: Take into account that exiting the crash site could also be done in reverse, 
   #so there might need to be additional data passed between planner and executor, or there needs to be some way to tell this that it is ok to drive in reverse during HEALING and CRASHED states. An example is additional_vars, that could be a list with parameters that can tell us which things we can do (for example going in reverse)
   def update_control(self, destination, throttle, steer, brake, delta_time):
+    vec = self.vehicle.get_transform().get_forward_vector()
+    veh = self.vehicle.get_transform().location
+    destination = self.knowledge.get_current_destination()
+    speed_limit = self.knowledge.retrieve_data("speed_limit")
+
+    speed = get_speed(self.vehicle)
+    limit = self.vehicle.get_speed_limit()
+    print("Limit is ", limit)
+    print("Speed is ", speed)
+
+    self.vehicle.get_world().debug.draw_string(carla.Location(destination.x,destination.y,destination.z), 'O', draw_shadow=False,
+                                       color=carla.Color(r=255, g=0, b=0), life_time=120.0,
+                                       persistent_lines=True)
+   
+    forwardvec = np.array([vec.x,vec.y]) #rotation vector, one of the vectors we use for our calculation
+    nextvec = np.array([destination.x,destination.y])
+
+    v0 = [(destination.x - veh.x), (destination.y - veh.y)] #The other vector from which we gain the angle
+    v1 = [vec.x,vec.y] # Rotation vector
+      
+    #print("Forward VEC ", forwardvec)
+    #print("Destination vector ", nextvec)
+
+
+    #print ("V1 ", v1)
+    #print ("V_ap ", v0)
+
+    #Calculate the cross product, in order to know which side the vector the angle is
+    #sign = (-v0[0] * vec.y + v0[1] * vec.x) 
+    sign = 1
+    if np.cross(v0, v1) < 0:
+      sign = -1
+
+    #print("sign is ", sign)
+
+    cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
+    angle = sign * np.arccos(cosine) * 180/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
+
+     # self.vehicle.get_world().debug.draw_point()
+    #if sign > 0:
+    #  steer = angle
+    #elif sign < 0:
+    #  steer = (angle * -1) 
+
+    print ("np.degrees are ", np.degrees(angle))
+    print("Angle is ", angle)
+    steer = -angle/90
+    if speed_limit == 0:
+      throttle = 0.0
+      brake = 1
+    else:
+      throttle = 0.5
+      brake = 0.0
+      
+      #steer = 0.0
+      
+
     #calculate throttle and heading
     control = carla.VehicleControl()
     control.throttle = throttle
@@ -125,12 +140,13 @@ class Planner(object):
   def update_plan(self):
     if len(self.path) == 0:
       return
-    
+
     if self.knowledge.arrived_at(self.path[0]):
       self.path.popleft()
     
     if len(self.path) == 0:
       self.knowledge.update_status(Status.ARRIVED)
+      self.knowledge.update_data('speed_limit', 0)
     else:
       self.knowledge.update_status(Status.DRIVING)
 
@@ -248,3 +264,11 @@ class Planner(object):
 
     return self.path
 
+def get_speed(vehicle):
+    """
+    Compute speed of a vehicle in Kmh
+    :param vehicle: the vehicle for which speed is calculated
+    :return: speed as a float in Kmh
+    """
+    vel = vehicle.get_velocity()
+    return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
