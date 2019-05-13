@@ -3,6 +3,7 @@
 import glob
 import os
 import sys
+import math
 
 try:
     sys.path.append(glob.glob('**/*%d.%d-%s.egg' % (
@@ -35,6 +36,9 @@ class Monitor(object):
     self.knowledge.update_data('speed_limit', vehicle.get_speed_limit())
     self.knowledge.update_data('at_lights', vehicle.is_at_traffic_light())
     self.knowledge.update_data('traffic_light', self.vehicle.get_traffic_light())
+    self.knowledge.update_data('velocity', self.vehicle.get_velocity())
+    self.knowledge.update_data('targetvel', 4)
+
 
     bp = world.get_blueprint_library().find('sensor.other.lane_detector')
     self.lane_detector = world.spawn_actor(bp, carla.Transform(), attach_to=self.vehicle)
@@ -48,6 +52,7 @@ class Monitor(object):
     self.knowledge.update_data('traffic_light', self.vehicle.get_traffic_light())
     self.knowledge.update_data('location', self.vehicle.get_transform().location)
     self.knowledge.update_data('rotation', self.vehicle.get_transform().rotation)
+    self.knowledge.update_data('velocity', self.vehicle.get_velocity())
 
 
   @staticmethod
@@ -73,8 +78,25 @@ class Analyser(object):
       if traffic_light.state == carla.TrafficLightState.Red:
         self.knowledge.update_data('speed_limit', 0)
     # distance to target 
-    # speed 4     distance < 4
-    #Targetvelocity ( minmax targetbel-vel-0.5,0,1)
-    # 
+    # targetvel =  4.0  # deafult   
+    #  distance < 4 = minmalValue(dist(dest,current),4)
+    #Targetvelocity = ( min (max(targetvel-vel-0.5),0),1)
+    #
+    targetvel = 4
+    location = carla.Vector3D(self.knowledge.retrieve_data("location").x,self.knowledge.retrieve_data("location").y, self.knowledge.retrieve_data("location").z)
+    end_destination = self.knowledge.retrieve_data("end_destination")
+    if self.knowledge.distance(location,end_destination) < 4:
+      targetvel = min(self.knowledge.distance(location,end_destination),4)
+    else:
+      vel = self.knowledge.retrieve_data("velocity")
+      print("________________________________________")
+      print(vel)
+      vel =  math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+      print(vel)
+      targetvel = min(max((targetvel-vel)-0.5,0),1)
+      print(targetvel)
+
+    self.knowledge.update_data('targetvel',targetvel)
+
 
     return
