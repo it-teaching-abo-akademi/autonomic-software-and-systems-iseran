@@ -94,7 +94,6 @@ class Executor(object):
       vel = self.vehicle.get_velocity()
       speed = math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
       targetvel = self.knowledge.retrieve_data("targetvel")
-      print(targetvel)
       const=1
       if targetvel > speed:
         throttle = min((targetvel-speed)/const,1)  
@@ -220,9 +219,9 @@ class Planner(object):
         # get lane chagen 
         lanechange= current_waypoint.lane_change # returns carla.LaneChange  
       
-        # TODO modifie so it has a candidate and it is compared in the second if!
+        # TODO modify so it has a candidate and it is compared in the second if!
         if carla.LaneChange.Right == lanechange or carla.LaneChange.Both == lanechange:
-          print("LaneChangeRight-----------------------")
+          #print("LaneChangeRight-----------------------")
           right_candidate = current_waypoint.get_right_lane()
           # if candicate is closer than choosen waypoint
           if right_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
@@ -230,7 +229,7 @@ class Planner(object):
             current_waypoint = right_candidate
             
         elif carla.LaneChange.Left == lanechange or carla.LaneChange.Both == lanechange:
-          print("LaneChangeLeft-----------------------")
+          #print("LaneChangeLeft-----------------------")
           left_candidate = current_waypoint.get_left_lane()
           # if candicate is closer than choosen waypoint 
           if left_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
@@ -242,7 +241,7 @@ class Planner(object):
       if current_waypoint.transform.location.distance(
                 end_waypoint.transform.location) < 5.0: break
       else:
-        print(current_waypoint)
+        #print(current_waypoint)
         # convert to vector
         vec =carla.Vector3D(current_waypoint.transform.location.x,current_waypoint.transform.location.y,current_waypoint.transform.location.z)
         self.path.append(vec)    
