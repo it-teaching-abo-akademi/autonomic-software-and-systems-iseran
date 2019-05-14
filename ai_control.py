@@ -42,9 +42,9 @@ class Executor(object):
     status = self.knowledge.get_status()
     #print("Printing the status", status)
     #TODO: this needs to be able to handle
+    destination = self.knowledge.get_current_destination()
 
     if status == Status.DRIVING:
-      destination = self.knowledge.get_current_destination()
 
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
@@ -127,7 +127,7 @@ class Executor(object):
 # Alternatively this can also provide a list of waypoints to try avoid crashing or 'uncrash' itself
 # Create a plan of waypoints from the start to destination, before we start driving. A bit like Dijkstra algorithm
 class Planner(object):
-  def __init__(self, knowledge, world):
+  def __init__(self, knowledge):
     self.knowledge = knowledge
     self.path = deque([]) 
     self._hop_resolution= 2.0
