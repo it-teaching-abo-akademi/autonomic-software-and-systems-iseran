@@ -31,11 +31,7 @@ class Executor(object):
     self.target_pos = knowledge.get_location()
 
   def get_speed(self, vehicle):
-    """
-    Compute speed of a vehicle in Kmh
-    :param vehicle: the vehicle for which speed is calculated
-    :return: speed as a float in Kmh
-    """
+    # to km/h
     vel = vehicle.get_velocity()
     return 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
 
@@ -64,7 +60,6 @@ class Executor(object):
       if np.cross(v0, v1) < 0:
         sign = -1
 
-
       cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
       angle = sign * np.arccos(cosine) * 180/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
 
@@ -77,17 +72,34 @@ class Executor(object):
         #throttle = 0.5
         brake = 0.0
       
+      #V1 stupid speed version, but this works betther for keeping around speed limit
       speed = self.get_speed(self.vehicle)
-      targetvel = self.knowledge.retrieve_data("targetvel")
-    
       if speed_limit > speed:
-        throttle = targetvel  
+        throttle = 1  
+        brake = 0.0
       else:
         throttle = 0.0
-    
 
+      #V2  Speed with calculated velocity to next waypoint 
+      # comment out if testing V1
+      vel = vehicle.get_velocity()
+      speed = math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
+      targetvel = self.knowledge.retrieve_data("targetvel")
+      print(targetvel)
+      const=1
+      if targetvel > speed:
+        throttle = min((targetvel-speed)/const,1)  
+        brake = 0.0
+      else:
+      throttle = 0.0
+      # comment out if testing V1
+    else:
+      # break if arrived 
+      throttle = 0 
+      brake = 1
+      steer = 0
 
-      self.update_control(destination, throttle,  steer, brake, time_elapsed)
+    self.update_control(destination, throttle,  steer, brake, time_elapsed)
 
   # TODO: steer in the direction of destination and throttle or brake depending on how close we are to destination
   # TODO: Take into account that exiting the crash site could also be done in reverse, 

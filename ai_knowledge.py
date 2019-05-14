@@ -48,7 +48,7 @@ class Knowledge(object):
     self.status = new_status
 
   def get_current_destination(self):
-    print(self.destination)
+    
     return self.destination
 
   # Retrieving data from memory
@@ -67,7 +67,6 @@ class Knowledge(object):
     return self.retrieve_data('location')
 
   def arrived_at(self, destination):
-    self.knowledge.update_data('speed_limit', 0)
     return self.distance(self.get_location(),destination) < 5.0
 
   def update_destination(self, new_destination):

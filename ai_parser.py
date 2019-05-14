@@ -70,27 +70,23 @@ class Analyser(object):
 
   #Function that is called at time intervals to update ai-state
   def update(self, time_elapsed):
-    ## find out if the car is at a trafic light and light red  
+   
+    #velocity calculation depending on destination and speed
+    # distance to target 
+    speed = self.knowledge.retrieve_data("speed_limit")
+    targetvel = speed/3.6   # convert to meter per second  
+    location = carla.Vector3D(self.knowledge.retrieve_data("location").x,self.knowledge.retrieve_data("location").y, self.knowledge.retrieve_data("location").z)
+    end_destination = self.knowledge.get_current_destination()
+    # if close to destination minimi target speed
+    targetvel = max(min(self.knowledge.distance(location,end_destination),targetvel),0)
+    
+    # find out if the car is at a trafic light and light red  
     # change speed to 0 
     if self.knowledge.retrieve_data("at_lights"):
       traffic_light = self.knowledge.retrieve_data("traffic_light")
       if traffic_light.state == carla.TrafficLightState.Red:
+        targetvel =0.0 # if at ligth 
         self.knowledge.update_data('speed_limit', 0)
-    #velocity calculation depending on destination and speed
-    # distance to target 
-    targetvel = 4 # deafult somhow?? 
-    location = carla.Vector3D(self.knowledge.retrieve_data("location").x,self.knowledge.retrieve_data("location").y, self.knowledge.retrieve_data("location").z)
-    end_destination = self.knowledge.retrieve_data("end_destination")
-    # if close to destination 
-    if self.knowledge.distance(location,end_destination) < 4:
-      targetvel = min(self.knowledge.distance(location,end_destination),4)
-    else:
-      vel = self.knowledge.retrieve_data("velocity")
-      print("________________________________________")
-      vel =  vel.z #M/s   3.6math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
-      print(vel)
-      targetvel = min(max((targetvel-vel)-0.5,0),1)
-      print(targetvel)
 
     #set target velocity into knowledge
     self.knowledge.update_data('targetvel',targetvel)
