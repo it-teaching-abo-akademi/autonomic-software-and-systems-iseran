@@ -40,27 +40,35 @@ class Executor(object):
     self.update_speed = time_elapsed
     status = self.knowledge.get_status()
     #TODO: this needs to be able to handle
+    destination = self.knowledge.get_current_destination()
+
     if status == Status.DRIVING:
       destination = self.knowledge.get_current_destination()
       
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
-
+      
+      #Debug
       self.vehicle.get_world().debug.draw_string(carla.Location(destination.x,destination.y,destination.z), 'O', draw_shadow=False,
                                        color=carla.Color(r=255, g=0, b=0), life_time=120.0,
                                        persistent_lines=True)
-   
-      forwardvec = np.array([vec.x,vec.y]) #rotation vector, one of the vectors we use for our calculation
+
+      #rotation vector, one of the vectors we use for our calculation
+      forwardvec = np.array([vec.x,vec.y]) 
+      #The other vector from which we gain the angle
       nextvec = np.array([destination.x,destination.y])
 
-      v0 = [(destination.x - veh.x), (destination.y - veh.y)] #The other vector from which we gain the angle
-      v1 = [vec.x,vec.y] # Rotation vector
+      #Destination vector
+      dest_vec = [(destination.x - veh.x), (destination.y - veh.y)] 
+      # Rotation vector
+      fwd_vec = [vec.x,vec.y] 
         
       sign = 1
-      if np.cross(v0, v1) < 0:
+      if np.cross(dest_vec, fwd_vec) < 0:
         sign = -1
-
-      cosine = np.dot(v1, v0) / np.linalg.norm(v1) / np.linalg.norm(v0)
+      
+      #calculate angle
+      cosine = np.dot(fwd_vec, dest_vec) / np.linalg.norm(fwd_vec) / np.linalg.norm(dest_vec)
       angle = sign * np.arccos(cosine) * 180/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
 
       steer = -angle/90
@@ -82,7 +90,7 @@ class Executor(object):
 
       #V2  Speed with calculated velocity to next waypoint 
       # comment out if testing V1
-      vel = vehicle.get_velocity()
+      vel = self.vehicle.get_velocity()
       speed = math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
       targetvel = self.knowledge.retrieve_data("targetvel")
       print(targetvel)
@@ -91,7 +99,7 @@ class Executor(object):
         throttle = min((targetvel-speed)/const,1)  
         brake = 0.0
       else:
-      throttle = 0.0
+        throttle = 0.0
       # comment out if testing V1
     else:
       # break if arrived 
