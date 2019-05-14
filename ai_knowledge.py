@@ -67,16 +67,11 @@ class Knowledge(object):
     return self.retrieve_data('location')
 
   def arrived_at(self, destination):
-    # linear to closer rto zero, 
+    self.knowledge.update_data('speed_limit', 0)
     return self.distance(self.get_location(),destination) < 5.0
 
   def update_destination(self, new_destination):
-    # print("-----------------")
-    # print(new_destination)
-    # print(self.destination)
-    # print(self.distance(self.destination,new_destination))
-    # print("-----------------")
-
+   # if we are within 1 m form destination get next
     if self.distance(self.destination,new_destination) > 1:
       self.destination = new_destination
       self.destination_changed(new_destination)

@@ -29,8 +29,6 @@ class Executor(object):
     self.vehicle = vehicle
     self.knowledge = knowledge
     self.target_pos = knowledge.get_location()
-    self.steer = 0.0
-    self.update_speed = 0.5
 
   def get_speed(self, vehicle):
     """
@@ -48,7 +46,6 @@ class Executor(object):
     #TODO: this needs to be able to handle
     if status == Status.DRIVING:
       destination = self.knowledge.get_current_destination()
-      speed_limit = self.knowledge.retrieve_data("speed_limit")
       
       vec = self.vehicle.get_transform().get_forward_vector()
       veh = self.vehicle.get_transform().location
@@ -72,22 +69,21 @@ class Executor(object):
       angle = sign * np.arccos(cosine) * 180/np.pi # The 90/np.pi is to bind our values to the steering angles, -1 and 1
 
       steer = -angle/90
-      
+      speed_limit = self.knowledge.retrieve_data("speed_limit")
       if speed_limit == 0:
         throttle = 0.0
         brake = 1
       else:
-        throttle = 0.5
+        #throttle = 0.5
         brake = 0.0
       
       speed = self.get_speed(self.vehicle)
       targetvel = self.knowledge.retrieve_data("targetvel")
-      print(speed)
-      print(targetvel)
+    
       if speed_limit > speed:
         throttle = targetvel  
       else:
-        throttle = targetvel
+        throttle = 0.0
     
 
 
@@ -165,19 +161,24 @@ class Planner(object):
   #TODO: Implementation
   def build_path(self, source, destination):
     self.path = deque([])
-    #TODO: create path of waypoints from source 
+    
+    #create path of waypoints from source 
    
     map = self.knowledge.retrieve_data("map")
     start_waypoint = map.get_waypoint(source.location)
+    # convert to locatio to be able to compare distance 
     destLoc = carla.Location(destination.x,destination.y,destination.z)
     end_waypoint = map.get_waypoint(destLoc)
   
     current_waypoint = start_waypoint
     while True :
+      #find nearest waaypoints 
       w_next = list(current_waypoint.next(10))
       if len(w_next) > 1: 
         min_idx = 0 
         min_dist = None
+        # for every waypoint check if there is a waypoint closer to the destination
+        # use the closest waypoint index for next waypoint from W_next 
         for idx, next in enumerate(w_next):
           w_next_next = list(next.next(20))
      
@@ -190,62 +191,41 @@ class Planner(object):
               min_dist = dist
               min_idx = idx
 
-        last_waypoint = current_waypoint
         current_waypoint = w_next[min_idx]
       else:
-        last_waypoint = current_waypoint
+        # if only one we use it 
         current_waypoint = w_next[0]
-        #check 
 
-
-
-    
-      #print(current_waypoint.get_left_lane())
-      #print(current_waypoint.get_right_lane())
-  
-      #http://carla.org/2019/03/01/release-0.9.4/
+        # get lane chagen 
+        lanechange= current_waypoint.lane_change # returns carla.LaneChange  
       
-        lanechange= current_waypoint.lane_change # returns carla.LaneChnage
-        print("LaneChange-----------------------")
-        print(lanechange)
-       
-        # 0: None
-        # 1: Right
-        # 2: Left
-        # 3: Both
-
+        # TODO modifie so it has a candidate and it is compared in the second if!
         if carla.LaneChange.Right == lanechange or carla.LaneChange.Both == lanechange:
           print("LaneChangeRight-----------------------")
-          print(current_waypoint.lane_change)
-          print(current_waypoint.get_right_lane())
           right_candidate = current_waypoint.get_right_lane()
+          # if candicate is closer than choosen waypoint
           if right_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
                 end_waypoint.transform.location):
             current_waypoint = right_candidate
             
         elif carla.LaneChange.Left == lanechange or carla.LaneChange.Both == lanechange:
           print("LaneChangeLeft-----------------------")
-          print(current_waypoint.get_left_lane())
           left_candidate = current_waypoint.get_left_lane()
+          # if candicate is closer than choosen waypoint 
           if left_candidate.transform.location.distance(end_waypoint.transform.location) < current_waypoint.transform.location.distance(
                 end_waypoint.transform.location):
             current_waypoint = left_candidate
 
 
-
-
-    #  or Random
-    #  current_waypoint = random.choice(w_next)
+      # break if we are 5 from destination
       if current_waypoint.transform.location.distance(
                 end_waypoint.transform.location) < 5.0: break
       else:
         print(current_waypoint)
-
+        # convert to vector
         vec =carla.Vector3D(current_waypoint.transform.location.x,current_waypoint.transform.location.y,current_waypoint.transform.location.z)
         self.path.append(vec)    
-    
-    # vec =carla.Vector3D(current_waypoint.transform.location.x,current_waypoint.transform.location.y,current_waypoint.transform.location.z)
-    # self.path.append(vec)
+
     self.path.append(destination)
 
 
