@@ -24,8 +24,7 @@ class Status(Enum):
 
 # Class that holds the knowledge of the current state and serves as interaction point for all the modules
 class Knowledge(object):
-  def __init__(self, vehicle):
-    self.world = None 
+  def __init__(self):
     self.status = Status.ARRIVED
     self.memory = {'location':carla.Vector3D(0.0,0.0,0.0)}    
     self.destination = self.get_location()
@@ -45,17 +44,11 @@ class Knowledge(object):
   def get_status(self):
     return self.status
 
-  def set_world(self, world):
-    self.world = world
-
   def set_status(self, new_status):
     self.status = new_status
 
-  def get_world(self):
-    return self.world
-
   def get_current_destination(self):
-    print(self.destination)
+    
     return self.destination
 
   # Retrieving data from memory
@@ -74,16 +67,10 @@ class Knowledge(object):
     return self.retrieve_data('location')
 
   def arrived_at(self, destination):
-    # linear to closer rto zero, 
     return self.distance(self.get_location(),destination) < 5.0
 
   def update_destination(self, new_destination):
-    # print("-----------------")
-    # print(new_destination)
-    # print(self.destination)
-    # print(self.distance(self.destination,new_destination))
-    # print("-----------------")
-
+   # if we are within 1 m form destination get next
     if self.distance(self.destination,new_destination) > 1:
       self.destination = new_destination
       self.destination_changed(new_destination)

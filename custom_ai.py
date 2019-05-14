@@ -46,7 +46,7 @@ class Autopilot(object):
 
   def get_vehicle(self):
     return self.vehicle
- 
+
   #Update all the modules and return the current status
   def update(self):
     ctime = int(round(time.time() * 1000))
